@@ -1,0 +1,105 @@
+plugins {
+  id 'fabric-loom' version '1.11.+'
+  id 'maven-publish'
+}
+
+version = project.mod_version + "+" + project.minecraft_version
+group = project.maven_group
+
+base {
+  archivesName = project.archives_base_name
+}
+
+sourceSets {
+  testmod {
+    compileClasspath += main.compileClasspath
+    runtimeClasspath += main.runtimeClasspath
+  }
+}
+
+loom {
+  runs {
+    testmodClient {
+      client()
+      name = "Testmod Client"
+      source sourceSets.testmod
+    }
+    testmodServer {
+      server()
+      name = "Testmod Server"
+      source sourceSets.testmod
+    }
+  }
+
+  accessWidenerPath = file("src/main/resources/fantasy.accesswidener")
+}
+
+repositories {
+  maven { url = "https://maven.gegy.dev/" }
+  maven { url = "https://maven.nucleoid.xyz/" }
+}
+
+dependencies {
+  annotationProcessor 'org.projectlombok:lombok:1.18.34'
+  compileOnly 'org.projectlombok:lombok:1.18.34'
+
+  minecraft "com.mojang:minecraft:${project.minecraft_version}"
+  mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+  modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+  modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+  testmodImplementation sourceSets.main.output
+}
+
+processResources {
+  inputs.property "version", project.version
+
+  filesMatching("fabric.mod.json") {
+    expand "version": project.version
+  }
+}
+
+tasks.withType(JavaCompile).configureEach {
+  it.options.encoding = "UTF-8"
+  it.options.release = 21
+}
+
+java {
+  withSourcesJar()
+
+  sourceCompatibility = JavaVersion.VERSION_21
+  targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+  from "LICENSE"
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      artifact(remapJar) {
+        builtBy remapJar
+      }
+      artifact(sourcesJar) {
+        builtBy remapSourcesJar
+      }
+    }
+  }
+
+  repositories {
+    def env = System.getenv()
+    if (env.MAVEN_URL) {
+      maven {
+        credentials {
+          username env.MAVEN_USERNAME
+          password env.MAVEN_PASSWORD
+        }
+        url env.MAVEN_URL
+      }
+    } else {
+      mavenLocal()
+    }
+  }
+}

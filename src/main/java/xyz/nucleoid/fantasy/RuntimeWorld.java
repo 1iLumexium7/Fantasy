@@ -1,0 +1,178 @@
+package xyz.nucleoid.fantasy;
+
+import com.google.common.collect.ImmutableList;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.WorldGenerationProgressListener;
+import net.minecraft.server.WorldGenerationProgressLogger;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.ProgressListener;
+import net.minecraft.util.Util;
+import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.random.RandomSequencesState;
+import net.minecraft.world.GameRules;
+import net.minecraft.world.World;
+import net.minecraft.world.biome.source.BiomeAccess;
+import net.minecraft.world.chunk.ChunkStatus;
+import net.minecraft.world.dimension.DimensionOptions;
+import net.minecraft.world.level.ServerWorldProperties;
+import net.minecraft.world.level.storage.LevelStorage;
+import net.minecraft.world.spawner.SpecialSpawner;
+import org.jetbrains.annotations.Nullable;
+import xyz.nucleoid.fantasy.mixin.MinecraftServerAccess;
+
+import java.util.List;
+import java.util.concurrent.Executor;
+
+public class RuntimeWorld extends ServerWorld {
+    final Style style;
+    private boolean flat;
+    protected RuntimeWorld(MinecraftServer server, RegistryKey<World> registryKey, RuntimeWorldConfig config, Style style) {
+        super(
+                server, Util.getMainWorkerExecutor(), ((MinecraftServerAccess) server).getSession(),
+                new RuntimeWorldProperties(server.getSaveProperties(), config),
+                registryKey,
+                config.createDimensionOptions(server),
+                new DebugWorldGenerationListener(),
+                false,
+                BiomeAccess.hashSeed(config.getSeed()),
+                ImmutableList.of(),
+                config.shouldTickTime(),
+                null
+        );
+        //WorldGenerationProgressLogger::create
+        this.style = style;
+        this.flat = config.isFlat().orElse(super.isFlat());
+    }
+
+    protected RuntimeWorld(MinecraftServer server, Executor workerExecutor, LevelStorage.Session session, ServerWorldProperties properties, RegistryKey<World> worldKey, DimensionOptions dimensionOptions, boolean debugWorld, long seed, List<SpecialSpawner> spawners, boolean shouldTickTime, @Nullable RandomSequencesState randomSequencesState, Style style) {
+        super(server, workerExecutor, session, properties, worldKey, dimensionOptions, new DebugWorldGenerationListener(), debugWorld, seed, spawners, shouldTickTime, randomSequencesState);
+        this.style = style;
+    }
+//    protected RuntimeWorld(MinecraftServer server, RegistryKey<World> registryKey, RuntimeWorldConfig config, Style style) {
+//
+//
+//        super(
+//                server, Util.getMainWorkerExecutor(), ((MinecraftServerAccess) server).getSession(),
+//                new RuntimeWorldProperties(server.getSaveProperties(), config),
+//                registryKey,
+//                config.createDimensionOptions(server),
+//                null,
+//                false,
+//                BiomeAccess.hashSeed(config.getSeed()),
+//                List.of(),
+//                config.shouldTickTime(),
+//                null
+//        );
+//        this.style = style;
+//        this.flat = config.isFlat().orElse(super.isFlat());
+//    }
+//
+//    public RuntimeWorld(
+//            MinecraftServer server,
+//            Executor workerExecutor,
+//            LevelStorage.Session session,
+//            ServerWorldProperties properties,
+//            RegistryKey<World> worldKey,
+//            DimensionOptions dimensionOptions,
+//            WorldGenerationProgressListener worldGenerationProgressListener,
+//            boolean debugWorld,
+//            long seed,
+//            List<SpecialSpawner> spawners,
+//            boolean shouldTickTime,
+//            @Nullable RandomSequencesState randomSequencesState, Style style
+//    ) {
+//        super(
+//                server,
+//                workerExecutor,
+//                session,
+//                properties,
+//                worldKey,
+//                dimensionOptions,
+//                worldGenerationProgressListener,
+//                debugWorld,
+//                seed,
+//                spawners,
+//                shouldTickTime,
+//                randomSequencesState
+//        );
+//        this.style = style;
+//    }
+
+//    protected RuntimeWorld(MinecraftServer server, Executor workerExecutor, LevelStorage.Session session, ServerWorldProperties properties, RegistryKey<World> worldKey, DimensionOptions dimensionOptions, boolean debugWorld, long seed, List<SpecialSpawner> spawners, boolean shouldTickTime, @Nullable RandomSequencesState randomSequencesState, Style style) {
+//        super(server, workerExecutor, session, properties, worldKey, dimensionOptions, debugWorld, seed, spawners, shouldTickTime, randomSequencesState);
+//        this.style = style;
+//    }
+
+
+    @Override
+    public long getSeed() {
+        return ((RuntimeWorldProperties) this.properties).config.getSeed();
+    }
+
+    @Override
+    public void save(@Nullable ProgressListener progressListener, boolean flush, boolean enabled) {
+        if (this.style == Style.PERSISTENT || !flush) {
+            super.save(progressListener, flush, enabled);
+        }
+    }
+
+    /**
+    * Only use the time update code from super as the immutable world proerties runtime dimensions breaks scheduled functions
+    */
+    @Override
+    protected void tickTime() {
+        if (this.shouldTickTime) {
+            if (this.getGameRules().getBoolean(GameRules.DO_DAYLIGHT_CYCLE)) {
+                this.setTimeOfDay(this.properties.getTimeOfDay() + 1L);
+            }
+        }
+    }
+
+    @Override
+    public boolean isFlat() {
+        return this.flat;
+    }
+
+    public enum Style {
+        PERSISTENT,
+        TEMPORARY
+    }
+
+    public interface Constructor {
+        RuntimeWorld createWorld(MinecraftServer server, RegistryKey<World> registryKey, RuntimeWorldConfig config, Style style);
+    }
+
+    private static class DebugWorldGenerationListener implements WorldGenerationProgressListener {
+        //private final Map<ChunkStatus, Integer> statusCount = new HashMap<>();
+
+        @Override
+        public void start(ChunkPos spawnPos) {
+//            System.out.println("🚀 Начало генерации мира вокруг: " + spawnPos);
+//            this.statusCount.clear();
+        }
+
+        @Override
+        public void setChunkStatus(ChunkPos pos, @Nullable ChunkStatus status) {
+//            if (status != null) {
+//                this.statusCount.merge(status, 1, Integer::   sum);
+//
+//                if (status == ChunkStatus.FULL) {
+//                    System.out.println("✅ Чанк готов: " + pos + " (всего готово: " +
+//                            this.statusCount.getOrDefault(ChunkStatus.FULL, 0) + ")");
+//                }
+//            }
+        }
+
+        @Override
+        public void stop() {
+//            System.out.println("🏁 Генерация мира завершена");
+//            System.out.println("Статистика по статусам: " + this.statusCount);
+        }
+
+        @Override
+        public void start() {
+
+        }
+    }
+}
